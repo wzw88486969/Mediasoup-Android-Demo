@@ -50,7 +50,8 @@ public class Room {
     private String mProtooUrl = "";
     private String roomId, peerId;
     private ConsumerTransportListener consumerTransportListener;
-    private SurfaceViewRenderer renderer;
+    private SurfaceViewRenderer remoteRenderer;
+    private SurfaceViewRenderer localRenderer;
 
     private ArrayList<PeerHolder> peerList = new ArrayList<>();
 
@@ -63,8 +64,10 @@ public class Room {
         return peerList;
     }
 
-    public Room(String roomId, String peerId, SurfaceViewRenderer surfaceViewRenderer) {
-        this.renderer = surfaceViewRenderer;
+    public Room(String roomId, String peerId, SurfaceViewRenderer localVideoView, SurfaceViewRenderer remoteVideoView) {
+        this.remoteRenderer = remoteVideoView;
+        this.localRenderer = localVideoView;
+
         //this.consumerTransportListener = consumerTransportListener;
         this.roomId = roomId;
         this.peerId = peerId;
@@ -72,7 +75,7 @@ public class Room {
         handlerThread.start();
         mWorkHandler = new Handler(handlerThread.getLooper());
         mMainHandler = new Handler(Looper.getMainLooper());
-        mProtooUrl = "wss://mediasoup.yuwee.com:4443/?roomId=" + roomId + "&peerId=" + peerId;
+        mProtooUrl = "wss://10.168.11.43:4443/?roomId=" + roomId + "&peerId=" + peerId;
 
         mWorkHandler.post(
                 () -> {
@@ -89,9 +92,13 @@ public class Room {
         mMediasoupDevice.load(routerRtpCapabilities);
         String rtpCapabilities = mMediasoupDevice.getRtpCapabilities();
 
-
         createSendTransport();
         createRecvTransport();
+
+        JSONObject deviceInfo = new JSONObject();
+        deviceInfo.put("flag", "123");
+        deviceInfo.put("name", "android");
+        deviceInfo.put("version", "1.0.1");
 
         String joinResponse =
                 mProtoo.syncRequest(
@@ -99,7 +106,7 @@ public class Room {
                         req -> {
                             try {
                                 req.put("displayName", "Tanay");
-                                req.put("device", new JSONObject());
+                                req.put("device", deviceInfo);
                                 req.put("rtpCapabilities", new JSONObject(rtpCapabilities));
                                 // TODO (HaiyangWu): add sctpCapabilities
                                 req.put("sctpCapabilities", "");
@@ -298,6 +305,7 @@ public class Room {
             if (mLocalVideoTrack == null) {
                 mLocalVideoTrack = mPeerConnectionUtils.createVideoTrack(MyApp.getInstance().getApplicationContext(), "cam");
                 mLocalVideoTrack.setEnabled(true);
+                mLocalVideoTrack.addSink(localRenderer);
             }
             mCamProducer =
                     mSendTransport.produce(
@@ -701,7 +709,7 @@ public class Room {
             handler.accept();
 
             if (kind.equalsIgnoreCase("video")) {
-                ((VideoTrack) consumer.getTrack()).addSink(renderer);
+                ((VideoTrack) consumer.getTrack()).addSink(remoteRenderer);
             }
 
             /*boolean isFound = false;
