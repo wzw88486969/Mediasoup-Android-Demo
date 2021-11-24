@@ -229,12 +229,12 @@ public class PeerConnectionUtils {
                 SurfaceTextureHelper.create("CaptureThread", mEglBase.getEglBaseContext());
 
         mCamCapture.initialize(surfaceTextureHelper, context, mVideoSource.getCapturerObserver());
-        mCamCapture.startCapture(640, 480, 30);
+        mCamCapture.startCapture(640, 480, 15);
     }
 
     public void changeToHd() {
         if (mCamCapture != null) {
-            mCamCapture.changeCaptureFormat(1280, 720, 30);
+            mCamCapture.changeCaptureFormat(1280, 720, 15);
         }
     }
 

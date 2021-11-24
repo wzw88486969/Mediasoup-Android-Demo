@@ -13,6 +13,18 @@ android {
         versionCode 1
         versionName "1.0"
 
+        sourceSets {
+            main {
+                jniLibs.srcDirs = ['libs']
+            }
+        }
+
+        ndk {
+            // Specifies the ABI configurations of your native
+            // libraries Gradle should build and package with your APK.
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+
     }
 
     buildTypes {
@@ -36,7 +48,8 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
 
     implementation 'org.protoojs.droid:protoo-client:4.0.3'
-    implementation 'org.mediasoup.droid:mediasoup-client:3.0.8-beta-3'
+    //implementation 'org.mediasoup.droid:mediasoup-client:3.0.8-beta-3'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'com.squareup.okhttp3:okhttp:4.3.0'
     implementation("com.squareup.okhttp3:logging-interceptor:4.3.0")
