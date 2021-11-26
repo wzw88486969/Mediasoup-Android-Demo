@@ -114,6 +114,9 @@ public class Room {
                                 e.printStackTrace();
                             }
                         });
+
+        mWorkHandler.post(this::enableMic);
+        mWorkHandler.post(this::enableCam);
     }
 
     @WorkerThread

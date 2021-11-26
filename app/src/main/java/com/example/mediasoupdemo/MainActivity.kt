@@ -28,9 +28,9 @@ class MainActivity : AppCompatActivity() {
 
     fun publish(view: View) {
         room = Room("7chpagjs", "7chpagjs110", mLocalVideoView, mRemoteVideoView)
-        Thread.sleep(1000 * 5)
-        room?.enableCam()
-        room?.enableMic()
+//        Thread.sleep(1000 * 5)
+//        room?.enableCam()
+//        room?.enableMic()
     }
 
     fun end(view: View) {
