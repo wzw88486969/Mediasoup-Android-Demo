@@ -1,4 +1,4 @@
-package com.example.mediasoupdemo;
+package com.example.lib;
 
 import android.os.Handler;
 import android.os.HandlerThread;

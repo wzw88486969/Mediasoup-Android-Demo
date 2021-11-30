@@ -1,4 +1,4 @@
-package com.example.mediasoupdemo;
+package com.example.lib;
 
 import android.content.Context;
 import android.text.TextUtils;

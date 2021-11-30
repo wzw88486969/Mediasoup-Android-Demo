@@ -1,4 +1,6 @@
-package com.example.mediasoupdemo;
+package com.example.lib;
+
+import android.util.Log;
 
 import androidx.annotation.WorkerThread;
 
@@ -31,8 +33,8 @@ public class Protoo extends org.protoojs.droid.Peer {
     }
 
     private Observable<String> request(String method, @androidx.annotation.NonNull JSONObject data) {
-        AppData.log("Request Method: " + method);
-        AppData.log("request(), method: " + method);
+        Log.e(TAG,"Request Method: " + method);
+        Log.e(TAG,"request(), method: " + method);
         return Observable.create(
                 emitter ->
                         request(
@@ -70,7 +72,7 @@ public class Protoo extends org.protoojs.droid.Peer {
 
     @WorkerThread
     private String syncRequest(String method, @androidx.annotation.NonNull JSONObject data) throws ProtooException {
-        AppData.log( "syncRequest(), method: " + method);
+        Log.e(TAG, "syncRequest(), method: " + method);
 
         try {
             return request(method, data).blockingFirst();

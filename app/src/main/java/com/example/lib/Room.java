@@ -1,8 +1,10 @@
-package com.example.mediasoupdemo;
+package com.example.lib;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.WorkerThread;
 
@@ -10,6 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.mediasoup.droid.Consumer;
 import org.mediasoup.droid.Device;
+import org.mediasoup.droid.MediasoupClient;
 import org.mediasoup.droid.MediasoupException;
 import org.mediasoup.droid.Producer;
 import org.mediasoup.droid.RecvTransport;
@@ -24,6 +27,7 @@ import org.webrtc.VideoTrack;
 import java.util.ArrayList;
 
 public class Room {
+    private static final String TAG = "Room";
     // Local cam mediasoup Producer.
     private Producer mCamProducer;
     // Closed flag.
@@ -52,6 +56,8 @@ public class Room {
     private ConsumerTransportListener consumerTransportListener;
     private SurfaceViewRenderer remoteRenderer;
     private SurfaceViewRenderer localRenderer;
+    private Context mContext;
+    private static boolean isInitMediasoupClient = false;
 
     private ArrayList<PeerHolder> peerList = new ArrayList<>();
 
@@ -64,10 +70,15 @@ public class Room {
         return peerList;
     }
 
-    public Room(String roomId, String peerId, SurfaceViewRenderer localVideoView, SurfaceViewRenderer remoteVideoView) {
+    public Room(Context ctx, String roomId, String peerId, SurfaceViewRenderer localVideoView, SurfaceViewRenderer remoteVideoView) {
+        mContext = ctx;
+        if (isInitMediasoupClient ==  false) {
+            MediasoupClient.initialize(mContext.getApplicationContext());
+            isInitMediasoupClient = true;
+        }
+
         this.remoteRenderer = remoteVideoView;
         this.localRenderer = localVideoView;
-
         //this.consumerTransportListener = consumerTransportListener;
         this.roomId = roomId;
         this.peerId = peerId;
@@ -88,7 +99,7 @@ public class Room {
     private void joinImpl() throws MediasoupException, ProtooException, JSONException {
         mMediasoupDevice = new Device();
         String routerRtpCapabilities = mProtoo.syncRequest("getRouterRtpCapabilities");
-        AppData.log("Capabilities: " + routerRtpCapabilities);
+        Log.e(TAG,"Capabilities: " + routerRtpCapabilities);
         mMediasoupDevice.load(routerRtpCapabilities);
         String rtpCapabilities = mMediasoupDevice.getRtpCapabilities();
 
@@ -121,7 +132,7 @@ public class Room {
 
     @WorkerThread
     private void createSendTransport() throws ProtooException, JSONException, MediasoupException {
-        AppData.log("createSendTransport()");
+        Log.e(TAG,"createSendTransport()");
         String res =
                 mProtoo.syncRequest(
                         "createWebRtcTransport",
@@ -151,7 +162,7 @@ public class Room {
 
     @WorkerThread
     private void createRecvTransport() throws ProtooException, JSONException, MediasoupException {
-        AppData.log("createRecvTransport()");
+        Log.e(TAG,"createRecvTransport()");
 
         String res =
                 mProtoo.syncRequest(
@@ -169,7 +180,7 @@ public class Room {
 
                         });
         JSONObject info = new JSONObject(res);
-        AppData.log("device#createRecvTransport() " + info);
+        Log.e(TAG,"device#createRecvTransport() " + info);
         String id = info.optString("id");
         String iceParameters = info.optString("iceParameters");
         String iceCandidates = info.optString("iceCandidates");
@@ -206,7 +217,7 @@ public class Room {
                                         }
 
                                     });
-                    AppData.log("producerId: " + producerId);
+                    Log.e(TAG,"producerId: " + producerId);
                     return producerId;
                 }
 
@@ -228,24 +239,24 @@ public class Room {
                                 }
                             })
                             .subscribe(
-                                    d -> AppData.log("connectWebRtcTransport res: " + d),
-                                    t -> AppData.log("connectWebRtcTransport for mSendTransport failed" + t));
+                                    d -> Log.e(TAG,"connectWebRtcTransport res: " + d),
+                                    t -> Log.e(TAG,"connectWebRtcTransport for mSendTransport failed" + t));
                 }
 
                 @Override
                 public void onConnectionStateChange(Transport transport, String connectionState) {
-                    AppData.log("onConnectionStateChange: " + connectionState);
+                    Log.e(TAG,"onConnectionStateChange: " + connectionState);
                 }
             };
 
     private String fetchProduceId(Protoo.RequestGenerator generator) {
-        AppData.log("fetchProduceId:()");
+        Log.e(TAG,"fetchProduceId:()");
         try {
             String response = mProtoo.syncRequest("produce", generator);
             return new JSONObject(response).optString("id");
         } catch (ProtooException | JSONException e) {
             e.printStackTrace();
-            AppData.log("send produce request failed " + e);
+            Log.e(TAG,"send produce request failed " + e);
             return "";
         }
     }
@@ -260,7 +271,7 @@ public class Room {
                    /* if (mClosed) {
                         return;
                     }*/
-                    AppData.log("RecvTransport, onConnect()");
+                    Log.e(TAG,"RecvTransport, onConnect()");
                     mProtoo.request(
                             "connectWebRtcTransport",
                             req -> {
@@ -272,13 +283,13 @@ public class Room {
                                 }
                             })
                             .subscribe(
-                                    d -> AppData.log("connectWebRtcTransport res: " + d),
-                                    t -> AppData.log("connectWebRtcTransport for mRecvTransport failed " + t));
+                                    d -> Log.e(TAG,"connectWebRtcTransport res: " + d),
+                                    t -> Log.e(TAG,"connectWebRtcTransport for mRecvTransport failed " + t));
                 }
 
                 @Override
                 public void onConnectionStateChange(Transport transport, String connectionState) {
-                    AppData.log("onConnectionStateChange: " + connectionState);
+                    Log.e(TAG,"onConnectionStateChange: " + connectionState);
                     /*if (connectionState.equalsIgnoreCase("completed")) {
                         mMainHandler.post(() -> consumerTransportListener.onTransportConnected());
                     }*/
@@ -287,33 +298,33 @@ public class Room {
 
     @WorkerThread
     private void enableCamImpl() {
-        AppData.log("enableCamImpl()");
+        Log.e(TAG,"enableCamImpl()");
         try {
             if (mCamProducer != null) {
                 return;
             }
             if (!mMediasoupDevice.isLoaded()) {
-                AppData.log("enableCam() | not loaded");
+                Log.e(TAG,"enableCam() | not loaded");
                 return;
             }
             if (!mMediasoupDevice.canProduce("video")) {
-                AppData.log("enableCam() | cannot produce video");
+                Log.e(TAG,"enableCam() | cannot produce video");
                 return;
             }
             if (mSendTransport == null) {
-                AppData.log("enableCam() | mSendTransport doesn't ready");
+                Log.e(TAG,"enableCam() | mSendTransport doesn't ready");
                 return;
             }
 
             if (mLocalVideoTrack == null) {
-                mLocalVideoTrack = mPeerConnectionUtils.createVideoTrack(MyApp.getInstance().getApplicationContext(), "cam");
+                mLocalVideoTrack = mPeerConnectionUtils.createVideoTrack(mContext.getApplicationContext(), "cam");
                 mLocalVideoTrack.setEnabled(true);
                 mLocalVideoTrack.addSink(localRenderer);
             }
             mCamProducer =
                     mSendTransport.produce(
                             producer -> {
-                                AppData.log("onTransportClose(), camProducer");
+                                Log.e(TAG,"onTransportClose(), camProducer");
                                 if (mCamProducer != null) {
                                     //mStore.removeProducer(mCamProducer.getId());
                                     mCamProducer = null;
@@ -325,7 +336,7 @@ public class Room {
             //mStore.addProducer(mCamProducer);
         } catch (MediasoupException e) {
             e.printStackTrace();
-            AppData.log("enableWebcam() | failed: " + e);
+            Log.e(TAG,"enableWebcam() | failed: " + e);
             //mStore.addNotify("error", "Error enabling webcam: " + e.getMessage());
             /*if (mLocalVideoTrack != null) {
                 mLocalVideoTrack.setEnabled(false);
@@ -365,12 +376,12 @@ public class Room {
                                 try {
                                     switch (request.getMethod()) {
                                         case "newConsumer": {
-                                            AppData.log("newConsumer");
+                                            Log.e(TAG,"newConsumer");
                                             onNewConsumer(request, handler);
                                             break;
                                         }
                                         case "newDataConsumer": {
-                                            AppData.log("newDataConsumer");
+                                            Log.e(TAG,"newDataConsumer");
                                             //onNewDataConsumer(request, handler);
                                             break;
                                         }
@@ -436,7 +447,7 @@ public class Room {
             return;
         }
         this.mClosed = true;
-        AppData.log("close()");
+        Log.e(TAG,"close()");
 
         mWorkHandler.post(
                 () -> {
@@ -479,31 +490,31 @@ public class Room {
 
     @WorkerThread
     private void enableMicImpl() {
-        AppData.log("enableMicImpl()");
+        Log.e(TAG,"enableMicImpl()");
         try {
             if (mMicProducer != null) {
                 return;
             }
             if (!mMediasoupDevice.isLoaded()) {
-                AppData.log("enableMic() | not loaded");
+                Log.e(TAG,"enableMic() | not loaded");
                 return;
             }
             if (!mMediasoupDevice.canProduce("audio")) {
-                AppData.log("enableMic() | cannot produce audio");
+                Log.e(TAG,"enableMic() | cannot produce audio");
                 return;
             }
             if (mSendTransport == null) {
-                AppData.log("enableMic() | mSendTransport doesn't ready");
+                Log.e(TAG,"enableMic() | mSendTransport doesn't ready");
                 return;
             }
             if (mLocalAudioTrack == null) {
-                mLocalAudioTrack = mPeerConnectionUtils.createAudioTrack(MyApp.getInstance().getApplicationContext(), "mic");
+                mLocalAudioTrack = mPeerConnectionUtils.createAudioTrack(mContext.getApplicationContext(), "mic");
                 mLocalAudioTrack.setEnabled(true);
             }
             mMicProducer =
                     mSendTransport.produce(
                             producer -> {
-                                AppData.log("onTransportClose(), micProducer");
+                                Log.e(TAG,"onTransportClose(), micProducer");
                                 if (mMicProducer != null) {
                                     //mStore.removeProducer(mMicProducer.getId());
                                     mMicProducer = null;
@@ -515,7 +526,7 @@ public class Room {
             //mStore.addProducer(mMicProducer);
         } catch (MediasoupException e) {
             e.printStackTrace();
-            AppData.log("enableMic() | failed: " + e);
+            Log.e(TAG,"enableMic() | failed: " + e);
             //mStore.addNotify("error", "Error enabling microphone: " + e.getMessage());
             if (mLocalAudioTrack != null) {
                 mLocalAudioTrack.setEnabled(false);
@@ -525,31 +536,31 @@ public class Room {
 
     //@Async
     public void enableMic() {
-        AppData.log("enableMic()");
+        Log.e(TAG,"enableMic()");
         mWorkHandler.post(this::enableMicImpl);
     }
 
     //@Async
     public void disableMic() {
-        AppData.log("disableMic()");
+        Log.e(TAG,"disableMic()");
         mWorkHandler.post(this::disableMicImpl);
     }
 
     //@Async
     public void muteMic() {
-        AppData.log("muteMic()");
+        Log.e(TAG,"muteMic()");
         mWorkHandler.post(this::muteMicImpl);
     }
 
     //@Async
     public void unmuteMic() {
-        AppData.log("unmuteMic()");
+        Log.e(TAG,"unmuteMic()");
         mWorkHandler.post(this::unmuteMicImpl);
     }
 
     //@Async
     public void enableCam() {
-        AppData.log("enableCam()");
+        Log.e(TAG,"enableCam()");
         //mStore.setCamInProgress(true);
         mWorkHandler.post(
                 () -> {
@@ -560,13 +571,13 @@ public class Room {
 
     //@Async
     public void disableCam() {
-        AppData.log("disableCam()");
+        Log.e(TAG,"disableCam()");
         mWorkHandler.post(this::disableCamImpl);
     }
 
     @WorkerThread
     private void disableMicImpl() {
-        AppData.log("disableMicImpl()");
+        Log.e(TAG,"disableMicImpl()");
         if (mMicProducer == null) {
             return;
         }
@@ -591,7 +602,7 @@ public class Room {
 
     @WorkerThread
     private void muteMicImpl() {
-        AppData.log("muteMicImpl()");
+        Log.e(TAG,"muteMicImpl()");
         mMicProducer.pause();
 
         try {
@@ -605,14 +616,14 @@ public class Room {
             //mStore.setProducerPaused(mMicProducer.getId());
         } catch (ProtooException e) {
             e.printStackTrace();
-            AppData.log("muteMic() | failed: " + e);
+            Log.e(TAG,"muteMic() | failed: " + e);
             //mStore.addNotify("error", "Error pausing server-side mic Producer: " + e.getMessage());
         }
     }
 
     @WorkerThread
     private void unmuteMicImpl() {
-        AppData.log("unmuteMicImpl()");
+        Log.e(TAG,"unmuteMicImpl()");
         mMicProducer.resume();
 
         try {
@@ -627,14 +638,14 @@ public class Room {
             //mStore.setProducerResumed(mMicProducer.getId());
         } catch (ProtooException e) {
             e.printStackTrace();
-            AppData.log("unmuteMic() | failed: " + e);
+            Log.e(TAG,"unmuteMic() | failed: " + e);
             //mStore.addNotify("error", "Error resuming server-side mic Producer: " + e.getMessage());
         }
     }
 
     @WorkerThread
     private void disableCamImpl() {
-        AppData.log("disableCamImpl()");
+        Log.e(TAG,"disableCamImpl()");
         if (mCamProducer == null) {
             return;
         }
@@ -658,7 +669,7 @@ public class Room {
 
     @WorkerThread
     private void disposeTransportDevice() {
-        AppData.log("disposeTransportDevice()");
+        Log.e(TAG,"disposeTransportDevice()");
         // Close mediasoup Transports.
         if (mSendTransport != null) {
             mSendTransport.close();
@@ -696,7 +707,7 @@ public class Room {
                     mRecvTransport.consume(
                             c -> {
                                 //mConsumers.remove(c.getId());
-                                AppData.log("onTransportClose for consume");
+                                Log.e(TAG,"onTransportClose for consume");
                             },
                             id,
                             producerId,
@@ -737,7 +748,7 @@ public class Room {
             }*/
         } catch (Exception e) {
             e.printStackTrace();
-            AppData.log("\"newConsumer\" request failed: " + e);
+            Log.e(TAG,"\"newConsumer\" request failed: " + e);
             //mStore.addNotify("error", "Error creating a Consumer: " + e.getMessage());
         }
     }
